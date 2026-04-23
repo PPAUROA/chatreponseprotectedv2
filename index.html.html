@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayPal Chat Response Tool</title>
+<style>
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --teal: #1D9E75;
+    --teal-light: #E1F5EE;
+    --teal-dark: #085041;
+    --navy: #0F2942;
+    --navy-mid: #1A3A5C;
+    --amber: #BA7517;
+    --amber-light: #FFF3DC;
+    --coral: #C0392B;
+    --coral-light: #FDEDEC;
+    --purple: #534AB7;
+    --purple-light: #EEEDFE;
+    --gold: #D4A843;
+    --surface: #F7F8FA;
+    --white: #FFFFFF;
+    --border: #E2E6EA;
+    --text: #1A1A2E;
+    --text-muted: #6B7280;
+    --text-light: #9CA3AF;
+    --sidebar-w: 280px;
+    --header-h: 64px;
+  }
+
+  html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: var(--text); background: var(--surface); }
+
+  /* ── LAYOUT ── */
+  #app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+  header {
+    height: var(--header-h); background: var(--navy); display: flex; align-items: center;
+    padding: 0 24px; gap: 16px; flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .header-logo {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 15px; font-weight: 600; color: white; letter-spacing: -0.2px;
+  }
+
+  .logo-pip {
+    width: 28px; height: 28px; background: var(--teal); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: white; letter-spacing: -0.5px;
+  }
+
+  .header-divider { width: 1px; height: 28px; background: rgba(255,255,255,0.12); }
+
+  .header-title { font-size: 13px; color: rgba(255,255,255,0.55); font-weight: 400; }
+
+  .search-wrap {
+    margin-left: auto; position: relative; width: 280px;
+  }
+
+  .search-wrap input {
+    width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px; padding: 8px 12px 8px 36px; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    color: white; outline: none; transition: all 0.2s;
+  }
+
+  .search-wrap input::placeholder { color: rgba(255,255,255,0.35); }
+  .search-wrap input:focus { background: rgba(255,255,255,0.12); border-color: var(--teal); }
+
+  .search-icon {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    color: rgba(255,255,255,0.35); pointer-events: none;
+  }
+
+  .body { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── SIDEBAR ── */
+  aside {
+    width: var(--sidebar-w); background: var(--white); border-right: 1px solid var(--border);
+    overflow-y: auto; flex-shrink: 0; padding: 12px 0;
+  }
+
+  aside::-webkit-scrollbar { width: 4px; }
+  aside::-webkit-scrollbar-track { background: transparent; }
+  aside::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .nav-section { margin-bottom: 4px; }
+
+  .nav-section-header {
+    padding: 6px 16px; font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-light); cursor: default;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 16px;
+    cursor: pointer; font-size: 13px; color: var(--text-muted); font-weight: 400;
+    transition: all 0.15s; border-left: 2px solid transparent; user-select: none;
+    line-height: 1.3;
+  }
+
+  .nav-item:hover { background: var(--surface); color: var(--text); }
+
+  .nav-item.active {
+    background: var(--teal-light); color: var(--teal-dark); font-weight: 500;
+    border-left-color: var(--teal);
+  }
+
+  .nav-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    background: currentColor; opacity: 0.5;
+  }
+
+  .nav-item.active .nav-dot { opacity: 1; }
+
+  .nav-sub-item {
+    padding: 7px 16px 7px 34px; font-size: 12px; color: var(--text-light);
+    cursor: pointer; transition: all 0.15s; border-left: 2px solid transparent;
+    user-select: none;
+  }
+
+  .nav-sub-item:hover { background: var(--surface); color: var(--text-muted); }
+  .nav-sub-item.active { color: var(--teal-dark); font-weight: 500; background: var(--teal-light); border-left-color: var(--teal); }
+
+  /* ── MAIN CONTENT ── */
+  main { flex: 1; overflow-y: auto; padding: 32px; }
+  main::-webkit-scrollbar { width: 6px; }
+  main::-webkit-scrollbar-track { background: transparent; }
+  main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* ── HOME ── */
+  .home-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px; max-width: 960px;
+  }
+
+  .home-header { margin-bottom: 28px; }
+  .home-header h1 { font-size: 24px; font-weight: 600; color: var(--text); letter-spacing: -0.4px; margin-bottom: 6px; }
+  .home-header p { font-size: 14px; color: var(--text-muted); }
+
+  .topic-card {
+    background: var(--white); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; cursor: pointer; transition: all 0.2s; user-select: none;
+  }
+
+  .topic-card:hover { border-color: var(--teal); box-shadow: 0 4px 16px rgba(29,158,117,0.1); transform: translateY(-1px); }
+
+  .card-pip {
+    width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; font-size: 17px; margin-bottom: 14px;
+  }
+
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; line-height: 1.3; }
+  .card-sub { font-size: 12px; color: var(--text-muted); }
+
+  /* ── SECTION VIEW ── */
+  .section-header {
+    display: flex; align-items: flex-start; gap: 16px; margin-bottom: 28px;
+    padding-bottom: 20px; border-bottom: 1px solid var(--border);
+  }
+
+  .section-pip {
+    width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center;
+    justify-content: center; font-size: 20px; flex-shrink: 0; margin-top: 2px;
+  }
+
+  .section-title { font-size: 22px; font-weight: 600; letter-spacing: -0.4px; color: var(--text); margin-bottom: 4px; }
+  .section-desc { font-size: 13px; color: var(--text-muted); }
+
+  /* ── SUB-SECTION TABS ── */
+  .sub-tabs {
+    display: flex; gap: 6px; margin-bottom: 24px; flex-wrap: wrap;
+  }
+
+  .sub-tab {
+    padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s; border: 1px solid var(--border);
+    background: var(--white); color: var(--text-muted); user-select: none;
+  }
+
+  .sub-tab:hover { border-color: var(--teal); color: var(--teal-dark); }
+  .sub-tab.active { background: var(--teal); color: white; border-color: var(--teal); }
+
+  /* ── RESPONSE TYPE TABS ── */
+  .type-tabs { display: flex; gap: 2px; margin-bottom: 20px; background: var(--surface); border-radius: 8px; padding: 3px; width: fit-content; }
+
+  .type-tab {
+    padding: 6px 16px; border-radius: 6px; font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s; color: var(--text-muted); user-select: none;
+  }
+
+  .type-tab:hover { color: var(--text); }
+  .type-tab.active { background: var(--white); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+
+  /* ── AGENT NOTE ── */
+  .agent-note {
+    background: var(--amber-light); border-left: 3px solid var(--amber);
+    border-radius: 0 6px 6px 0; padding: 10px 14px; margin-bottom: 14px;
+    font-size: 12px; color: #5C3D00; line-height: 1.6;
+  }
+
+  .agent-note strong { color: var(--amber); font-weight: 600; margin-right: 4px; }
+
+  /* ── CRITICAL NOTE ── */
+  .critical-note {
+    background: var(--coral-light); border: 1.5px solid var(--coral);
+    border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;
+  }
+
+  .critical-note-header {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--coral);
+    text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+  }
+
+  .critical-note-body { font-size: 12px; color: #5C1A1A; line-height: 1.7; }
+  .critical-note-body .step { font-weight: 600; color: var(--coral); }
+
+  /* ── RESPONSE BUBBLE ── */
+  .responses-grid { display: flex; flex-direction: column; gap: 10px; }
+
+  .response-item {
+    background: var(--white); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; transition: all 0.15s;
+  }
+
+  .response-item:hover { border-color: var(--teal); box-shadow: 0 2px 12px rgba(29,158,117,0.08); }
+
+  .response-preview {
+    padding: 14px 16px; cursor: pointer; display: flex; align-items: flex-start; gap: 12px;
+  }
+
+  .response-num {
+    width: 20px; height: 20px; border-radius: 50%; background: var(--surface);
+    display: flex; align-items: center; justify-content: center; font-size: 10px;
+    font-weight: 600; color: var(--text-muted); flex-shrink: 0; margin-top: 1px;
+  }
+
+  .response-text {
+    font-size: 13px; color: var(--text); line-height: 1.6; flex: 1;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .response-item.expanded .response-text { -webkit-line-clamp: unset; overflow: visible; }
+
+  .response-actions {
+    display: none; padding: 0 16px 14px 48px; gap: 8px;
+  }
+
+  .response-item.expanded .response-actions { display: flex; }
+
+  .btn-copy {
+    display: flex; align-items: center; gap: 6px; padding: 7px 14px;
+    background: var(--teal); color: white; border: none; border-radius: 6px;
+    font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  .btn-copy:hover { background: var(--teal-dark); }
+  .btn-copy.copied { background: #059669; }
+
+  .btn-collapse {
+    display: flex; align-items: center; gap: 6px; padding: 7px 14px;
+    background: var(--surface); color: var(--text-muted); border: 1px solid var(--border);
+    border-radius: 6px; font-size: 12px; cursor: pointer; transition: all 0.15s;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  .btn-collapse:hover { border-color: var(--text-muted); color: var(--text); }
+
+  /* ── QUICK REPLIES TABLE ── */
+  .qr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .qr-table th { background: var(--navy); color: white; font-weight: 500; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; padding: 10px 14px; text-align: left; }
+  .qr-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .qr-table tr:hover td { background: var(--surface); }
+  .qr-cat { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; }
+  .qr-sc { font-family: 'Courier New', Courier, monospace; font-size: 12px; font-weight: 500; color: var(--teal-dark); background: var(--teal-light); padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
+  .qr-copy { cursor: pointer; padding: 4px 8px; border-radius: 4px; background: var(--surface); border: 1px solid var(--border); font-size: 11px; color: var(--text-muted); transition: all 0.15s; white-space: nowrap; }
+  .qr-copy:hover { background: var(--teal-light); color: var(--teal-dark); border-color: var(--teal); }
+  .qr-copy.copied { background: #D1FAE5; color: #065F46; border-color: #6EE7B7; }
+
+  /* ── OPENER CARDS ── */
+  .opener-card {
+    background: var(--white); border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 12px; overflow: hidden;
+  }
+
+  .opener-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; cursor: pointer; user-select: none;
+  }
+
+  .opener-label { font-size: 13px; font-weight: 600; color: var(--text); }
+  .opener-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .opener-body { display: none; padding: 0 16px 16px; }
+  .opener-card.expanded .opener-body { display: block; }
+  .opener-text { font-size: 13px; line-height: 1.8; color: var(--text); background: var(--teal-light); border-radius: 8px; padding: 14px; margin-bottom: 10px; white-space: pre-line; }
+
+  /* ── MARKET REF BOX ── */
+  .market-box { background: #EAF4EE; border: 1.5px solid #1E5631; border-radius: 8px; padding: 16px; margin-top: 16px; }
+  .market-box-header { font-size: 11px; font-weight: 700; color: #1E5631; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px; }
+  .market-entry { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid rgba(30,86,49,0.15); }
+  .market-entry:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+  .market-name { font-size: 13px; font-weight: 600; color: #1E5631; margin-bottom: 4px; }
+  .market-url { font-size: 11px; color: #1F618D; font-style: italic; margin-bottom: 6px; word-break: break-all; }
+  .market-quote { font-size: 12px; color: #2D4A32; line-height: 1.6; font-style: italic; }
+
+  /* ── SEARCH RESULTS ── */
+  .search-results { padding: 0; }
+  .search-result-item { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s; }
+  .search-result-item:hover { border-color: var(--teal); }
+  .sr-topic { font-size: 10px; font-weight: 600; color: var(--teal); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .sr-type { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+  .sr-text { font-size: 13px; color: var(--text); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .sr-empty { text-align: center; padding: 48px 0; color: var(--text-muted); font-size: 14px; }
+
+  /* ── PW SCENARIOS ── */
+  .scenario-section { margin-top: 20px; }
+  .scenario-label { font-size: 12px; font-weight: 600; color: var(--navy-mid); background: #EBF5FB; padding: 8px 12px; border-radius: 6px; margin-bottom: 8px; }
+  .scenario-bubble { background: #EBF5FB; border: 1px solid #BFD7EA; border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; font-size: 13px; color: var(--text); line-height: 1.6; position: relative; }
+  .scenario-copy { position: absolute; right: 10px; top: 10px; padding: 3px 8px; border-radius: 4px; background: white; border: 1px solid var(--border); font-size: 11px; cursor: pointer; color: var(--text-muted); transition: all 0.15s; }
+  .scenario-copy:hover { background: var(--teal-light); color: var(--teal-dark); border-color: var(--teal); }
+  .scenario-copy.copied { background: #D1FAE5; color: #065F46; }
+
+  /* ── TALKING POINTS ── */
+  .tp-box { background: #EAF0F8; border: 1.5px solid #1A3A5C; border-radius: 8px; padding: 16px; margin-top: 16px; }
+  .tp-header { font-size: 11px; font-weight: 700; color: #1A3A5C; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px; }
+  .tp-intro { font-size: 12px; color: #2C3E50; line-height: 1.6; font-style: italic; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid rgba(26,58,92,0.15); }
+  .tp-item { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(26,58,92,0.1); }
+  .tp-item:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+  .tp-q { font-size: 12px; font-weight: 600; color: #1A3A5C; margin-bottom: 4px; }
+  .tp-a { font-size: 12px; color: #2C3E50; line-height: 1.6; }
+
+  /* ── EMPTY / LOADING ── */
+  .empty-state { text-align: center; padding: 80px 0; }
+  .empty-state h2 { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .empty-state p { font-size: 14px; color: var(--text-muted); }
+
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.2s ease forwards; }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+  .badge-teal { background: var(--teal-light); color: var(--teal-dark); }
+  .badge-coral { background: var(--coral-light); color: var(--coral); }
+  .badge-amber { background: var(--amber-light); color: var(--amber); }
+  .badge-purple { background: var(--purple-light); color: var(--purple); }
+
+</style>
+</head>
+<body>
+<div id="passwordGate" style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0F2942;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;"><div style="background:#fff;border-radius:16px;padding:40px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;"><div style="width:48px;height:48px;background:#1D9E75;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:white;margin:0 auto 20px;">PP</div><div style="font-size:20px;font-weight:600;color:#1A1A2E;margin-bottom:6px;">PayPal AU &amp; ROA</div><div style="font-size:13px;color:#6B7280;margin-bottom:28px;">Live Chat Response Tool</div><input id="passwordInput" type="password" placeholder="Enter password" style="width:100%;padding:12px 16px;border:1.5px solid #E2E6EA;border-radius:8px;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:12px;transition:border-color 0.2s;" onkeydown="if(event.key==='Enter')checkPassword()"><div id="passwordError" style="display:none;color:#C0392B;font-size:12px;margin-bottom:10px;">Incorrect password. Please try again.</div><button onclick="checkPassword()" style="width:100%;padding:12px;background:#1D9E75;color:white;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;">Access Tool</button></div></div><div id="app" style="display:none;">
+  <header>
+    <div class="header-logo">
+      <div class="logo-pip">PP</div>
+      PayPal AU &amp; ROA
+    </div>
+    <div class="header-divider"></div>
+    <span class="header-title">Live Chat Response Tool</span>
+    <div class="search-wrap">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="searchInput" placeholder="Search responses..." autocomplete="off">
+    </div>
+  </header>
+  <div class="body">
+    <aside id="sidebar"></aside>
+    <main id="main"></main>
+  </div>
+</div>
+<script>
+
+const DATA = JSON.parse("{\"sections\":[{\"id\":\"openers\",\"label\":\"Opening Responses\",\"emoji\":\"OPN\",\"color\":\"#1D9E75\",\"colorLight\":\"#E1F5EE\",\"desc\":\"Opening greetings for all contact types\",\"isOpeners\":true,\"openers\":[{\"label\":\"Opener A\",\"desc\":\"Warm and straightforward\",\"text\":\"Hi there, thank you for contacting PayPal! My name is [Name] and you're chatting live with a member of our team \u2014 I'm happy to help you today.\\n\\nFrom what I can see, you're reaching out about [SUMMARY] \u2014 let me look into that for you now.\\n\\nQuick heads-up \u2014 if the chat is inactive for 2 minutes it will automatically disconnect. I'll always send you a message before that happens!\\n\\nCould I please start by confirming who I'm speaking with today?\"},{\"label\":\"Opener B\",\"desc\":\"Professional and concise\",\"text\":\"Thanks for getting in touch with PayPal! You're speaking with [Name] \u2014 a live member of our support team \u2014 and I'm here to help.\\n\\nI understand you're contacting us today regarding [SUMMARY]. I'll get right on that for you.\\n\\nQuick heads-up \u2014 if the chat is inactive for 2 minutes it will automatically disconnect. I'll always send you a message before that happens!\\n\\nTo get started, could I please confirm who I'm speaking with?\"},{\"label\":\"Opener C\",\"desc\":\"Friendly and conversational\",\"text\":\"Hi there! Thank you for reaching out to PayPal today. I'm [Name] and you're connected to a real, live person \u2014 happy to help!\\n\\nIt looks like you're getting in touch about [SUMMARY] \u2014 I've got you, let me take a look now.\\n\\nQuick heads-up \u2014 if the chat is inactive for 2 minutes it will automatically disconnect. I'll always send you a message before that happens!\\n\\nBefore we dive in, could I please get your name?\"},{\"label\":\"Opener D\",\"desc\":\"Efficient \u2014 high volume periods\",\"text\":\"Hi, thank you for contacting PayPal! I'm [Name] and I'm here live to help you today.\\n\\nI can see you're reaching out about [SUMMARY] \u2014 I'll look into this for you now.\\n\\nQuick heads-up \u2014 if the chat is inactive for 2 minutes it will automatically disconnect. I'll always send you a message before that happens!\\n\\nCould I please confirm who I'm speaking with to get started?\"},{\"label\":\"Opener E\",\"desc\":\"Empathetic \u2014 sensitive contacts (CIP, limitations)\",\"text\":\"Hi there, thank you for getting in touch with PayPal today \u2014 I appreciate your patience. My name is [Name] and you're speaking directly with a live member of our team.\\n\\nI understand you're contacting us about [SUMMARY] \u2014 I want to make sure we get this sorted for you, so let me take a look now.\\n\\nQuick heads-up \u2014 if the chat is inactive for 2 minutes it will automatically disconnect. I'll always send you a message before that happens!\\n\\nTo make sure I'm assisting the right person, could I please confirm who I'm speaking with?\"}]},{\"id\":\"shortcuts\",\"label\":\"Quick Reply Shortcuts\",\"emoji\":\"QR\",\"color\":\"#2C3E50\",\"colorLight\":\"#EBF5FB\",\"desc\":\"Type shortcuts to trigger canned messages\",\"isShortcuts\":true,\"shortcuts\":[{\"cat\":\"Opening / Greeting\",\"sc\":\"/AI\",\"msg\":\"Hi [CUSTOMER_NAME], I'm sorry you're experiencing an issue with your PayPal account. I'd be happy to help you through this.\"},{\"cat\":\"Opening / Greeting\",\"sc\":\"/CI\",\"msg\":\"Thanks for working with our automated PayPal Assistant and providing your information. I'm happy to assist you.\"},{\"cat\":\"Opening / Greeting\",\"sc\":\"/RAI\",\"msg\":\"I see you had to repeat yourself with our automated assistant. I'm sorry about that. I read your previous messages and I'm happy to help you through this.\"},{\"cat\":\"Empathy\",\"sc\":\"/GE\",\"msg\":\"I understand, and I'm sorry you're experiencing this right now.\"},{\"cat\":\"Info Gathering / Next Steps\",\"sc\":\"/NMI\",\"msg\":\"Thank you for this information. To help you resolve this, I'll just need a few more details.\"},{\"cat\":\"Info Gathering / Next Steps\",\"sc\":\"/RSD\",\"msg\":\"A message box will be available in the next few minutes to collect your personal information during our conversation. When you see the message box, you can safely enter your data and select Submit. The message box will return, and you'll be able to enter additional details of a non-personal nature into our conversation.\"},{\"cat\":\"Info Gathering / Next Steps\",\"sc\":\"/RF\",\"msg\":\"I want to review this further, which may take a few minutes. Would it be ok to contact you with a follow-up?\"},{\"cat\":\"Waiting / Response Mgmt\",\"sc\":\"/MI\",\"msg\":\"Respond whenever you're ready, and we'll reply as soon as possible.\"},{\"cat\":\"Waiting / Response Mgmt\",\"sc\":\"/RCC\",\"msg\":\"We'll email you as soon as we've had time to review your case. Thanks for your time and have a great day.\"},{\"cat\":\"Transfer\",\"sc\":\"/T\",\"msg\":\"I'm transferring you to the department that handles this topic; they'll review and respond as soon as possible. The response may take time, so we'll notify you when they reply.\"},{\"cat\":\"Transfer\",\"sc\":\"/T2\",\"msg\":\"I'm transferring you to the department that handles this topic to assist you further.\"},{\"cat\":\"Resolution / Closing\",\"sc\":\"/GC\",\"msg\":\"I'm glad I was able to resolve this with you. Thank you for your time today and for being a PayPal customer.\"},{\"cat\":\"Resolution / Closing\",\"sc\":\"/RC\",\"msg\":\"I'm glad we could resolve (Insert customer enquiry; e.g., Disputes / Limitations / Payment hold release) for you. You may close the conversation when you are ready.\"},{\"cat\":\"Resolution / Closing\",\"sc\":\"/UC\",\"msg\":\"I appreciate your understanding in this matter. Thank you for reaching out. You may close the conversation when you are ready.\"},{\"cat\":\"Resolution / Closing\",\"sc\":\"/CC\",\"msg\":\"Thanks for contacting PayPal. You may close the conversation when you are ready.\"},{\"cat\":\"Resolution / Closing\",\"sc\":\"/GD\",\"msg\":\"Have a great rest of your day!\"},{\"cat\":\"Resolution / Closing\",\"sc\":\"/TY\",\"msg\":\"Thank you for contacting PayPal and for being a valued customer.\"},{\"cat\":\"Cooperation / Limitation Closing\",\"sc\":\"/LEC\",\"msg\":\"Thank you for cooperating with us. We appreciate your time and patience. You may close the conversation when you are ready.\"},{\"cat\":\"Cooperation / Limitation Closing\",\"sc\":\"/LGC\",\"msg\":\"I appreciate your cooperation. You may close the conversation when you are ready.\"},{\"cat\":\"Payment Review / Security\",\"sc\":\"/PR72\",\"msg\":\"As part of our security measures, we review certain payments more closely to ensure our platform is being used properly and to minimise potential risk for us and our customers. One of the payments you sent is currently being reviewed. We're working to resolve this as quickly as possible \u2014 the review takes about 72 hours. We apologise for any inconvenience.\"},{\"cat\":\"Payment Review / Security\",\"sc\":\"/PRG\",\"msg\":\"There is no need to worry about something being wrong with your account. To comply with global financial regulations, we review payments across PayPal. That is not to say it will happen on every payment, but it can happen and is there to help with security and compliance.\"},{\"cat\":\"Payment Review / Security\",\"sc\":\"/PRS1\",\"msg\":\"I completely understand your frustration, but we wouldn't be such a popular payment processor without our security system ensuring things are safe. Some things may be flagged seemingly without explanation, but it is something our security system is considering risky. You may need to try at an alternate time or try an alternative payment method for this transaction.\"},{\"cat\":\"Payment Review / Security\",\"sc\":\"/PRS2\",\"msg\":\"As fraudsters get smarter, our system has to get smarter too. Sometimes this means stopping transactions we may not fully understand the reasoning for. The security system is so effective because it is proprietary and PayPal does not always share the reasoning behind the risk \u2014 this keeps people from being able to circumvent or exploit the system. I know it makes things difficult, but it is there to help protect you and your money.\"},{\"cat\":\"Payment Review / Security\",\"sc\":\"/PROPT\",\"msg\":\"I understand it can feel like one person ruined it for all, but the main reason most use PayPal is for the security. PayPal works diligently to protect you and your money, which sometimes means payments go on hold or get declined. I know it's not ideal, but ultimately this is for the protection of all parties in the transaction. Here are some options: [INSERT OPTIONS].\"},{\"cat\":\"General / Miscellaneous\",\"sc\":\"/PHR\",\"msg\":\"I see you have reached us by phone already and trust your inquiry has been resolved. If you need further assistance please let me know. Thank you for reaching out to PayPal today.\"},{\"cat\":\"General / Miscellaneous\",\"sc\":\"/PPCO\",\"msg\":\"I noticed you are on an older version of PayPal checkout. Our best-in-class features are only available on the latest version. I am going to have an Account Executive contact you to have this set up for you \u2014 you will hear from someone within the next 5 working days.\"},{\"cat\":\"General / Miscellaneous\",\"sc\":\"/RPT\",\"msg\":\"Your request is being processed. You should receive an email when the reports are ready to download on the reports page. In certain cases it might take a little longer depending on the time period and volume of activity.\"},{\"cat\":\"Compliance & Legal\",\"sc\":\"/LOASG\",\"msg\":\"LOA for Singapore: https://www.paypalobjects.com/policydashboard/assets/regions/pppl/en/loa.pdf\"},{\"cat\":\"Compliance & Legal\",\"sc\":\"/VULN\",\"msg\":\"Thanks for sharing these details with us. This will be useful to best manage your complaint. If you agree, I'll add a record of the support and assistance you require. This will enable us to tailor our service to your needs and will ensure we treat you fairly and with respect. Please note that these details will be noted on this complaint only and not on your account details. If you engage with us on a separate matter in the future, you will need to disclose any personal circumstances you would like us to know about at that time.\"}]},{\"id\":\"disputes\",\"label\":\"Disputes & Chargebacks\",\"emoji\":\"D&C\",\"color\":\"#C0392B\",\"colorLight\":\"#FDEDEC\",\"desc\":\"Dispute cases, chargeback queries, case timelines\",\"blocks\":[{\"clarifyNote\":\"Find out whether this is a dispute the customer opened, a dispute opened against them, or a chargeback \u2014 the resolution path is different for each.\",\"clarify\":[\"I'm sorry to hear there's an issue with a payment \u2014 let's look into this together.\\n\\nAre you contacting us about a dispute or claim you raised, a dispute opened against you by a buyer, or a chargeback from your bank or card provider?\",\"Could you share the transaction ID or the amount and date of the payment in question? That'll help me pull up the details.\",\"Is the transaction showing in your PayPal account activity, or are you having trouble locating it?\"],\"hold\":[\"Thank you for that \u2014 I'm looking into the dispute details now. I'll be back with you shortly, I appreciate your patience!\",\"Thanks for bearing with me \u2014 just reviewing this on my end now. Won't be long!\"],\"resolveNote\":\"Always confirm the dispute status, next step, and timeframe \u2014 vague outcomes are the main driver of re-contacts on dispute cases.\",\"resolve\":[\"I've had a look at the dispute on your account. Currently it's showing as [STATUS] and [BRIEF EXPLANATION OF WHERE THINGS ARE AT].\\n\\nThe next step is [WHAT HAPPENS NOW]. This should be resolved within [TIMEFRAME]. You'll receive an email update from PayPal as things progress.\",\"I can see the dispute was [OUTCOME \u2014 e.g. decided in your favour / closed]. [SIMPLE EXPLANATION OF WHY].\\n\\n[WHAT THIS MEANS FOR THEM \u2014 e.g. funds returned, case closed]. Is there anything else about this I can help clarify?\",\"I understand this is frustrating, and I'm sorry for the inconvenience. Based on what I can see, [FINDING].\\n\\nUnfortunately [OUTCOME AND REASON \u2014 plain language]. If you'd like to take this further, [NEXT AVAILABLE OPTION \u2014 e.g. appeal process, contacting card issuer]. I'm happy to help with that if you'd like.\",\"I have opened that case for you. Please check your emails regularly as we will email you when anything happens with the case.\\n\\nIf you and the seller have not worked out a resolution within the next 19 days, please make sure you escalate the case before the 20th day. You can escalate it anytime between day 7 and day 19. If you do not escalate by the 20th day the case will be denied due to lack of escalation, which would mean you would lose the case and would not be able to re-open it \u2014 so please make sure to escalate in time.\",\"Please check your emails regularly as we will email you when anything happens with the case. It typically takes up to 30 days for a case to be resolved once escalated, though this is an average.\\n\\nThe first 10 days is the information gathering stage \u2014 we give the seller these 10 days to respond and provide their evidence. If they do not reply within that timeframe we will decide the case without them, usually in your favour.\"]}]},{\"id\":\"limitations\",\"label\":\"Limitations & Tax\",\"emoji\":\"LIM\",\"color\":\"#7D6608\",\"colorLight\":\"#FFF8DC\",\"desc\":\"Account limitations, tax requirements, fraud recovery, parting ways\",\"subs\":[{\"id\":\"lim-general\",\"label\":\"General Limitations\",\"criticalCheck\":[\"Before responding to any appeal request, complete all three steps.\",\"STEP 1: Check 'Prevented Actions' on the limitation.\",\"STEP 2: Check whether the customer has appealed before. IF YES \u2014 was the denial by a human reviewer?\",\"IF YES \u2014 human reviewer denied: DO NOT proceed with a new appeal. Use the Options Exhausted response.\",\"IF NO \u2014 no prior appeal or system-denied only: proceed with the appeal process as normal.\",\"STEP 3: DO NOT advise the customer that an appeal is possible until Steps 1 and 2 are complete.\"],\"clarifyNote\":\"Establish whether the limitation is account-wide or on a specific feature, and check if there is a tax information requirement \u2014 these often appear together.\",\"clarify\":[\"I'm sorry to hear you're having trouble with your account \u2014 I completely understand how disruptive that can be. Let's have a look at this together.\\n\\nAre you finding that your whole account is restricted, or is it a specific feature that's not available \u2014 like sending payments or withdrawing funds?\",\"Have you received any emails or notifications from PayPal letting you know what's needed to lift the restriction?\",\"Have you been asked to provide any tax information, such as a Tax File Number or ABN, as part of this process?\"],\"hold\":[\"Thank you \u2014 I'm reviewing your account now to see exactly what's needed. Back with you shortly!\",\"I appreciate your patience \u2014 just pulling up the details on my end. Won't keep you long!\"],\"resolveNote\":\"Be specific about what the customer needs to provide and how. If a human reviewer has denied the appeal, use the Options Exhausted response.\",\"resolve\":[\"I've reviewed your account. The limitation is in place because [SIMPLE REASON].\\n\\nTo get this lifted, you'll need to [SPECIFIC ACTION]. Here's how to do that: [SIMPLE STEPS].\\n\\nOnce we receive that, [TIMEFRAME AND OUTCOME]. Is there anything about that I can help clarify?\",\"Good news \u2014 I can see the information has been received and your account is [STATUS]. [BRIEF EXPLANATION].\\n\\nYou should now be able to [RESTORED FEATURE/CAPABILITY]. Let me know if anything doesn't look right!\",\"I can see there's a tax information requirement on your account. This is something we're required to collect under Australian tax regulations.\\n\\nTo complete this, you'll need to [SIMPLE STEPS \u2014 e.g. log in, go to Settings, enter your TFN or ABN]. Once that's submitted, [WHAT HAPPENS NEXT AND TIMEFRAME].\",\"I've reviewed your account carefully and I can see that an appeal was previously submitted and reviewed by our team.\\n\\nUnfortunately, because that review has already been completed by a member of our team, we're not able to open a new appeal \u2014 that decision is final.\\n\\nI understand that's very difficult to hear, and I'm genuinely sorry. I want to be upfront with you about where things stand:\\n\\n- You're not able to use PayPal to send or receive payments going forward\\n- If you're eligible to withdraw any funds in the future, PayPal will contact you by email with next steps \u2014 please keep an eye on your email alerts\\n- Please be aware this process has a minimum wait time of 180 days\\n\\nIs there anything else I can help clarify for you today?\"]},{\"id\":\"lim-fraud\",\"label\":\"Fraud Loss Recovery\",\"criticalCheck\":[\"This contact type can be hard to identify. Complete both checks before responding.\",\"STEP 1: Check outgoing notifications on the account \u2014 look for a fraud loss recovery notification.\",\"STEP 2: Check account activity for a corresponding charge or debit that aligns with the notification.\",\"IF YES to both \u2014 this is a fraud loss recovery contact. Use the responses below.\",\"DO NOT confirm or deny a fraud loss recovery until both checks are complete.\",\"IMPORTANT: The recovery charge is final. There is no dispute pathway. DO NOT imply that the charge can be reviewed, reversed, or escalated.\"],\"clarifyNote\":\"Customers may not use the words 'fraud loss recovery' \u2014 they may present as a general limitation or unexpected charge query.\",\"clarify\":[\"I'm sorry to hear you've received an unexpected charge \u2014 I completely understand how concerning that must be. Let me take a look at your account now.\\n\\nCould you confirm when you first noticed the charge, and have you received any emails or notifications from PayPal about it?\",\"Have you received a notification from PayPal explaining the reason for the restriction or charge on your account?\",\"Is your account currently restricted, or are you able to log in and transact as normal?\"],\"holdNote\":\"You are identifying whether this is a fraud loss recovery before responding. Do not indicate what you are looking for.\",\"hold\":[\"Thank you \u2014 I'm just reviewing the details on your account now. I'll be back with you shortly, I appreciate your patience!\",\"Thanks for bearing with me \u2014 just pulling this up on my end now. Won't keep you long!\"],\"resolveNote\":\"Once confirmed: acknowledge, explain clearly, and close. The account remains restricted and there are no further steps. Do not offer to escalate. If the customer asks for the amount, confirm it. For breakdown queries, explain only that it covers losses from not following the User Agreement.\",\"resolve\":[\"Thank you for your patience while I reviewed your account.\\n\\nI can see that a fraud loss recovery has been applied. This happens when PayPal has identified losses resulting from fraudulent activity associated with the account, and we are required to recover those losses.\\n\\nI understand this is upsetting news, and I'm sorry. I want to make sure I give you accurate information:\\n\\n- The recovery charge that has been applied is final and is not something we're able to reverse or waive\\n- Your account will remain restricted as a result of this\\n- If you're eligible to receive any remaining funds in the future, PayPal will contact you directly by email with next steps \u2014 please keep an eye on your email alerts\\n- This process has a minimum wait time of 180 days\\n\\nIs there anything about this I can clarify for you?\",\"I can see from the notifications on your account that a fraud loss recovery communication was sent to you on [DATE].\\n\\nThe charge relates to losses PayPal incurred as a result of activity on the account. This is outlined in the notification sent to you \u2014 I'd encourage you to review that email as it contains the details of what was applied and why.\\n\\nThis charge is final and the account will remain restricted. There are no further steps available on our end from here.\\n\\nIs there anything else I can help clarify today?\",\"I completely understand this feels unexpected, and I appreciate you reaching out.\\n\\nWhat I'm able to share is that the activity on your account resulted in a fraud loss recovery being applied in line with PayPal's User Agreement. The details of this were included in the notification sent to your email.\\n\\nThis isn't a decision I'm able to change or pass on for further review \u2014 it's a final outcome.\\n\\nIf you're eligible to access any remaining funds down the track, PayPal will reach out to you by email. The minimum timeframe for that process is 180 days, so please watch your inbox.\\n\\nIs there anything else I can help with today?\",\"I can see a recovery charge of [AMOUNT] has been applied to your account.\\n\\nThis charge is to recover losses incurred as a result of activity on the account that was not in line with PayPal's User Agreement. I'm not able to provide a further breakdown of that amount from my end, but the details were included in the notification sent to your email.\\n\\nThe charge is final and is not something we're able to reverse or waive. Is there anything else I can help clarify?\"],\"talkingPoints\":{\"intro\":\"PayPal has completed a review and determined that the account has engaged in Restricted Activities under the User Agreement, causing a loss to PayPal. Users agreed at sign-up that they are responsible for all reversals, chargebacks, fees, fines, penalties, and other liability caused by or arising from their breach of the User Agreement.\",\"items\":[{\"q\":\"Where in the User Agreement does it say PayPal can recover losses?\",\"a\":\"Under 'Actions We May Take if You Engage in Any Restricted Activities', users are responsible for all reversals, chargebacks, fees, fines, penalties, and other liability. Under 'PayPal's Rights', PayPal may recover amounts owed from any PayPal account balance. If a balance becomes negative, that amount is owed to PayPal and may be offset against funds added later or held in other accounts.\"},{\"q\":\"Why wasn't I notified about this?\",\"a\":\"An email was sent to the primary email address on file. The action also appears in the account Transaction History Log as a line item labelled 'PayPal Loss Recovery'.\"},{\"q\":\"I want to appeal this decision.\",\"a\":\"This decision is generally final and the User Agreement permits PayPal to take this action. The concern will be noted internally. If a different decision is made upon review, the customer will be notified directly.\"},{\"q\":\"Is this a fine or penalty?\",\"a\":\"No. The amount deducted is not a fine or penalty. It covers losses to PayPal caused by violations of the User Agreement.\"}]}},{\"id\":\"lim-pw\",\"label\":\"Parting Ways\",\"criticalCheck\":[\"STEP 1: Confirm the account is permanently limited and no transactions are permitted.\",\"STEP 2: Check the customer's market \u2014 AU, NZ, SG, MY, or ID \u2014 for the correct User Agreement reference.\",\"STEP 3: DO NOT offer an appeals process. DO NOT suggest any path to restoration. There is none.\",\"IMPORTANT: Limitations may be intentionally vague. DO NOT attempt to explain the specific reason.\"],\"clarifyNote\":\"Confirm permanent status before using these responses. Once confirmed, these responses are final \u2014 there is no further action available.\",\"clarify\":[\"Hello, thank you for contacting PayPal. My name is [Name].\\n\\nPlease state your first and last name for any account-specific questions.\",\"I'm sorry to hear you're having trouble with your account. Could you please confirm the full name and email address on the account so I can take a look?\"],\"holdNote\":\"You are confirming permanent limitation status and the customer's market. Do not signal what you are reviewing.\",\"hold\":[\"Thank you \u2014 I'm just reviewing the details on your account now. I'll be back with you shortly, I appreciate your patience!\",\"Thanks for bearing with me \u2014 just pulling this up on my end. Won't keep you long!\"],\"resolveNote\":\"All responses lead to the same outcome \u2014 the limitation is permanent. No transactions, withdrawals, changes or account closure are permitted.\",\"resolve\":[\"Your account has been permanently limited and account closure is not permitted, nor is the removal of any profile information. No transactions are permitted.\\n\\nPursuant to our User Agreement, PayPal has parted ways with you as an account holder and has permanently restricted all future use, transactions, updates and/or changes to the account, up to and including account closure.\",\"You have multiple unresolved limitations. Your limitations are viewable in the Resolution Centre of your PayPal account.\",\"You have multiple unresolved limitations and one or more of those limitations does not allow for withdrawal of funds. While some limitations may allow for withdrawal after 180 days, other limitations will not allow for withdrawal beyond that 180-day period.\",\"Limitations may be intentionally vague in their description so as not to allow circumvention or compromise of the security protocols that are vital to PayPal's security and functionality.\",\"Thank you for your interest in PayPal, but PayPal has concluded to part ways and cannot continue to support you or this account in any way. I apologise for any inconvenience.\\n\\nIf you have any additional questions you can refer to your regional User Agreement. Thank you.\",\"While I understand limitations are frustrating, your account will remain limited and no future transactions will be supported or allowed, including withdrawals. Thank you for understanding.\"],\"scenarios\":[{\"label\":\"Customer asks for an appeal or review\",\"responses\":[\"PayPal will conduct periodic reviews to determine if any funds are eligible for release. If anything changes we will communicate that to you. We will not communicate the absence of change.\",\"PayPal has already concluded that we will no longer offer any services to this account. If anything changes regarding that decision we will communicate that change to you. If nothing changes, we will not communicate the absence of change.\",\"If anything changes regarding your overall ability to make a withdrawal, that change will be communicated to you. PayPal will not communicate the absence of change.\",\"PayPal has concluded that our services will no longer be offered to this account. As such we have not asked you for any additional documents.\",\"If you have any additional documents you would like to upload for consideration you can, but it does not guarantee any change in your outcome as PayPal does not reach the conclusion to limit your account lightly.\"]},{\"label\":\"Customer wants to know when they can make a withdrawal\",\"responses\":[\"PayPal will conduct periodic reviews to determine if any funds are eligible for release. If anything changes we will communicate that to you. We will not communicate the absence of change.\",\"There won't be any future transactions supported. There is no appeals process and no changes to be made to the limitation.\"]},{\"label\":\"Customer wants to know why their account was limited\",\"responses\":[\"Limitations may be intentionally vague in their description so as to not allow circumvention or compromise of the necessary security protocols that are vital to PayPal's security and functionality.\"]}],\"marketRefs\":[{\"market\":\"Australia\",\"url\":\"https://www.paypal.com/au/legalhub/paypal/useragreement-full#s4-restricted-activities\",\"excerpt\":\"Limitations are implemented to help protect PayPal, buyers and sellers when we notice restricted activities, an increased financial risk, or activity that appears to us as unusual or suspicious. We may limit your access to sending, receiving or withdrawing funds for up to 180 days. A limitation may remain beyond 180 days if we reasonably believe there is still a risk to the integrity, security or reliability of us or our systems.\"},{\"market\":\"New Zealand\",\"url\":\"https://www.paypal.com/nz/legalhub/paypal/useragreement-full#restricted\",\"excerpt\":\"Hold the balance in your PayPal account if reasonably needed to protect against the risk of liability to PayPal or a third party, or if you have violated our Acceptable Use Policy. The hold may remain in place longer than 180 days according to Court Orders, Regulatory Requirements or Other Legal Processes.\"},{\"market\":\"Singapore\",\"url\":\"https://www.paypal.com/sg/legalhub/paypal/useragreement-full#restricted\",\"excerpt\":\"Hold the balance in your PayPal account if reasonably needed to protect against the risk of liability to PayPal or a third party, or if you have violated our Acceptable Use Policy. The hold may remain in place longer than 180 days according to Court Orders, Regulatory Requirements or Other Legal Processes.\"},{\"market\":\"Malaysia\",\"url\":\"https://www.paypal.com/my/legalhub/paypal/useragreement-full?locale.x=en_MY#restricted\",\"excerpt\":\"Hold the balance in your PayPal account if reasonably needed to protect against the risk of liability to PayPal or a third party, or if you have violated our Acceptable Use Policy. The hold may remain in place longer than 180 days according to Court Orders, Regulatory Requirements or Other Legal Processes.\"},{\"market\":\"Indonesia\",\"url\":\"https://www.paypal.com/id/legalhub/paypal/useragreement-full?country.x=ID&locale.x=en_ID#restricted\",\"excerpt\":\"Hold the balance in your PayPal account if reasonably needed to protect against the risk of liability to PayPal or a third party, or if you have violated our Acceptable Use Policy. The hold may remain in place longer than 180 days according to Court Orders, Regulatory Requirements or Other Legal Processes.\"}]}]},{\"id\":\"credit\",\"label\":\"Credit Financial Products\",\"emoji\":\"CFP\",\"color\":\"#1A5276\",\"colorLight\":\"#EAF0F8\",\"desc\":\"Working Capital loans and Pay in 4\",\"subs\":[{\"id\":\"credit-wc\",\"label\":\"Working Capital\",\"clarifyNote\":\"Merchant-only. First confirm the merchant is chatting from the account linked to their Working Capital loan \u2014 this is a security requirement and a hard stop. If not on the correct account, they must contact us from that account. The Working Capital tool surfaces loan information automatically on the correct account.\",\"holdNote\":\"If the merchant confirms they are NOT on the correct account, use the wrong account response \u2014 do not proceed.\",\"clarify\":[\"Thanks for getting in touch about PayPal Working Capital! Happy to help.\\n\\nTo make sure I can access the right details securely \u2014 is this chat coming from the PayPal account that your Working Capital loan is linked to?\",\"What is your query about today?\\n\\n- Checking whether your business is eligible\\n- An offer you've already received\\n- Your current loan and repayments\\n- Something else related to Working Capital?\"],\"hold\":[\"Thank you \u2014 I'm just looking into the Working Capital details on your account now. Back with you shortly!\",\"Appreciate your patience \u2014 just reviewing this on my end. Won't be a moment!\"],\"resolveNote\":\"Working Capital details are surfaced automatically on the correct account. Payment holiday/relief requests transfer to Working Capital Collections by phone: 1-800-162-432.\",\"resolve\":[\"I've had a look at your account. [WHAT YOU FOUND \u2014 e.g. eligibility status, loan details].\\n\\n[SIMPLE EXPLANATION OF WHAT THIS MEANS]. [NEXT STEP OR ACTION IF NEEDED].\\n\\nIs there anything else about Working Capital I can help you with today?\",\"I can see your Working Capital loan is active. Your repayment rate is set at [PERCENTAGE]% of each PayPal sale, so repayments come out automatically as sales come in \u2014 there's nothing you need to do manually.\\n\\nJust to keep in mind \u2014 there is a minimum quarterly repayment amount. If your sales don't meet that minimum within the quarter, a scheduled payment will be required to cover the difference.\\n\\nYour current outstanding balance is [AMOUNT]. Is there anything specific about your repayments you'd like to go through?\",\"Absolutely \u2014 you can repay your Working Capital loan early at any time!\\n\\nTo make an early repayment, [SIMPLE STEPS]. The full outstanding balance is [AMOUNT].\\n\\nWould you like me to walk you through any part of that process?\",\"I can see an offer for Working Capital is showing on your account. The offer is for [AMOUNT] with a fixed fee of [FEE AMOUNT], repaid at [PERCENTAGE]% of your daily PayPal sales.\\n\\nRepayments come out automatically as your sales come in \u2014 there's no set deadline. However, please keep in mind that there is a minimum quarterly repayment amount. If your sales aren't covering that minimum within the quarter, a scheduled payment will be due to make up the difference.\\n\\nWould you like more information about how it works before deciding?\",\"I completely understand \u2014 if you're finding repayments difficult right now, the team who can help with payment relief and holiday options is our Working Capital Collections team.\\n\\nUnfortunately this isn't something we're able to arrange through chat, but they're available by phone and will be able to go through your options with you directly.\\n\\nYou can reach them on 1-800-162-432. I'm sorry I can't do more from here, but they'll be the right people to speak with!\",\"I'm sorry the system is showing a decline at this time. The application process looks at real-time processing, including consistency and volume of transactions, negative amounts, disputes, refunds, previous Working Capital loan behaviour, and other factors.\\n\\nThe good news is that because it looks at real-time processing, the decision can change as you continue to process. I'd encourage you to reapply periodically and look out for emails or account banners letting you know when you may be eligible.\\n\\nUnfortunately we don't have insight into the exact reasons for the decline, and there is no way for us to influence or override the decision. I'm sorry I don't have better news at this stage.\",\"I'm sorry, but for security purposes I'm only able to access Working Capital details when you're contacting us from the account the loan is linked to.\\n\\nTo get help with your Working Capital loan, you'll need to start a new chat from the PayPal account associated with that loan \u2014 once you do, we'll be able to pull up everything for you straight away.\\n\\nI'm sorry for the inconvenience \u2014 we just want to make sure your account information stays protected!\"]},{\"id\":\"credit-pi4\",\"label\":\"Pay in 4\",\"clarifyNote\":\"Merchant-only. We only handle queries from merchants about offering Pay in 4 or technical issues. All consumer contacts \u2014 regardless of query type \u2014 transfer to the Pay in 4 team. Identify who you are speaking with immediately.\",\"holdNote\":\"If the contact is a consumer \u2014 transfer immediately. Do not attempt to answer their query.\",\"clarify\":[\"Happy to help with Pay in 4! Just to make sure you're through to the right team \u2014 are you a business looking to offer Pay in 4 to your customers, or are you a customer who used Pay in 4 for a purchase?\",\"If you're a merchant \u2014 are you contacting us about your customers using Pay in 4, or about setting it up on your store?\"],\"hold\":[\"Thanks for that \u2014 just looking into this for you now. Back shortly!\",\"Appreciate your patience \u2014 won't keep you long!\"],\"resolveNote\":\"Merchant queries about offering Pay in 4 and technical issues are in scope. All consumer contacts transfer to the Pay in 4 team \u2014 no exceptions.\",\"resolve\":[\"For merchants, Pay in 4 is available through PayPal Complete Payments and select integrations. [ELIGIBILITY STATUS BASED ON ACCOUNT].\\n\\n[NEXT STEP \u2014 e.g. how to enable it, what integration is needed, or explanation of why it's not available]. Is there anything else I can help with today?\",\"I can see the issue with Pay in 4 at your checkout. [SIMPLE EXPLANATION OF WHAT'S HAPPENING].\\n\\nTo get this resolved: [CLEAR STEPS OR ACTION TAKEN]. [EXPECTED OUTCOME AND TIMEFRAME].\\n\\nLet me know if you'd like me to walk through any part of that!\",\"When a Pay in 4 is started, we do a pre-authorisation in the amount of the first payment. If the Pay in 4 goes through, this will be used as your first payment. If the Pay in 4 does not go through, the pre-authorisation will be voided within 72 hours \u2014 and depending on your financial institution, the funds will return to your account a few days after that.\",\"For your Pay in 4 query, I'll need to transfer you to our specialist Pay in 4 team \u2014 they'll have full visibility and will be able to help you straight away.\\n\\nI'll pass on what you've shared with me so you won't need to repeat yourself. Please bear with me while I connect you!\"]}]},{\"id\":\"wallet\",\"label\":\"Wallet\",\"emoji\":\"WAL\",\"color\":\"#1E8449\",\"colorLight\":\"#EAF4EE\",\"desc\":\"Balance, linked accounts, cards, withdrawals\",\"blocks\":[{\"clarifyNote\":\"Wallet covers balance, linked bank accounts, cards, and withdrawals \u2014 clarify the specific issue before researching.\",\"clarify\":[\"Happy to help with your PayPal Wallet! Could you let me know what the issue is?\\n\\nFor example \u2014 is it about your PayPal balance, a linked bank account or card, withdrawing funds, or something else?\",\"Are you having trouble adding or removing a payment method, or is there an issue with a transfer that's already been made?\",\"If this is about a transfer or withdrawal, could you let me know the amount and when you initiated it? That'll help me track it down.\"],\"hold\":[\"Thanks for that \u2014 I'm just looking into this for you now. Back shortly, I appreciate your patience!\",\"Thank you \u2014 just checking the details on my end now. Won't be a moment!\"],\"resolveNote\":\"Transfer and withdrawal timeframes vary by bank \u2014 always give the expected range and flag what to do if it hasn't arrived.\",\"resolve\":[\"I've had a look at your Wallet. [WHAT YOU FOUND \u2014 e.g. transfer status, linked account details].\\n\\n[SIMPLE EXPLANATION]. [NEXT STEP OR EXPECTED TIMEFRAME].\\n\\nIs there anything else about your Wallet I can help with today?\",\"I can see your withdrawal of [AMOUNT] was initiated on [DATE]. Transfers to a bank account typically take 1-3 business days to arrive.\\n\\nIf it hasn't come through by [DATE], I'd recommend checking with your bank first as it may be processing on their end. If there's still no sign of it after that, please get back in touch and we'll investigate further.\",\"I can see [LINKED ACCOUNT/CARD ISSUE \u2014 simple description]. [BRIEF REASON IF KNOWN].\\n\\nTo fix this, [SIMPLE STEPS OR ACTION TAKEN]. [EXPECTED OUTCOME]. Let me know if you'd like me to walk you through anything!\"]}]},{\"id\":\"checkout\",\"label\":\"Checkout & POS\",\"emoji\":\"POS\",\"color\":\"#C0392B\",\"colorLight\":\"#FDEDEC\",\"desc\":\"Checkout failures, payment method issues, integrations\",\"blocks\":[{\"clarifyNote\":\"Determine payment method, integration type, and whether the issue is merchant-side or customer-side before researching.\",\"clarify\":[\"Thanks for reaching out! I'm sorry to hear you're having trouble with checkout \u2014 let's get this sorted.\\n\\nIs this happening with a specific payment method (like card or PayPal balance), or is it affecting all options at checkout?\",\"Is this affecting all of your customers, or has it only been reported by certain buyers?\",\"Are you using a platform like Shopify or WooCommerce, or do you have a custom integration with PayPal?\"],\"hold\":[\"Thanks for that! I'm looking into your checkout issue now \u2014 I'll be back with you shortly. I appreciate your patience!\",\"Thank you \u2014 just pulling that up now. Won't be a moment!\"],\"resolveNote\":\"Confirm what was found, give a clear next step, and flag what to do if the issue continues \u2014 this prevents the re-contact.\",\"resolve\":[\"I've had a look into this for you. [WHAT YOU FOUND].\\n\\nTo get this fixed, [CLEAR NEXT STEP]. Once that's done, [WHAT SHOULD HAPPEN]. If you're still seeing the issue after that, please get back in touch and we'll dig further!\",\"Good news \u2014 I can see [POSITIVE FINDING]. [BRIEF EXPLANATION].\\n\\nEverything should be working as expected from your end. Is there anything else I can help with today?\",\"I can see what's causing this. [SIMPLE EXPLANATION].\\n\\nHere's what to do: [STEP 1]. Then [STEP 2]. That should get checkout back up and running. Let me know if you'd like me to walk through any part of that!\"]}]},{\"id\":\"identity\",\"label\":\"Identity\",\"emoji\":\"ID\",\"color\":\"#534AB7\",\"colorLight\":\"#EEEDFE\",\"desc\":\"Verification, account recovery, document submissions\",\"blocks\":[{\"clarifyNote\":\"Verify whether this is about confirming identity, recovering account access, or a document already submitted \u2014 each has a different path.\",\"clarify\":[\"Thanks for getting in touch! I want to make sure I help you with the right thing.\\n\\nAre you contacting us about verifying your identity to remove a restriction, getting back into your account, or checking on a document you've already sent through?\",\"Could I please confirm the email address on your PayPal account so I can take a look?\",\"Have you received any messages or emails from PayPal about your account, or did you notice something wasn't right when you tried to log in or make a payment?\"],\"hold\":[\"Thank you \u2014 I'm just reviewing your account now. I'll be with you shortly, I appreciate your patience!\",\"Thanks for that! Just pulling this up on my end \u2014 won't keep you long!\"],\"resolveNote\":\"Always spell out the next step clearly \u2014 identity contacts re-contact most often because the customer wasn't sure what to do after the chat.\",\"resolve\":[\"I've had a look at your account. [WHAT YOU FOUND AND WHY].\\n\\nTo get this sorted, you'll need to [SIMPLE NEXT STEP]. Once we receive it, [WHAT HAPPENS AND HOW LONG IT TAKES].\\n\\nIs there anything about that I can clarify for you?\",\"Great news \u2014 I can confirm [POSITIVE OUTCOME]. [ONE-SENTENCE EXPLANATION].\\n\\nYou should be able to [WHAT THEY CAN NOW DO] straight away. If anything doesn't look right, just reach out and we'll help!\",\"I can see your [DOCUMENT / REQUEST] is currently [STATUS]. [SIMPLE EXPLANATION].\\n\\nThis usually takes [TIMEFRAME] to process. You'll get an email from us once it's been reviewed \u2014 keep an eye on your inbox!\"]}]},{\"id\":\"holds\",\"label\":\"Holds\",\"emoji\":\"HLD\",\"color\":\"#2E6DA4\",\"colorLight\":\"#EAF2FB\",\"desc\":\"Payment holds, release amounts, early release options\",\"blocks\":[{\"clarifyNote\":\"Lead with empathy \u2014 a hold on funds is stressful. Get the key details before explaining options.\",\"clarify\":[\"I'm sorry to hear your funds are on hold \u2014 I completely understand how worrying that can be. Let's look into this together.\\n\\nCould you let me know roughly when the payment came in, and is this for one specific transaction or your whole account balance?\",\"Have you received any message or email from PayPal explaining why the hold is in place, or did you notice it without any communication?\",\"When you look at the transaction in your PayPal account, does it show an expected release date?\"],\"hold\":[\"Thank you \u2014 I know this is time-sensitive, so I'm looking into it for you right now. I'll be back as soon as I can, I really appreciate your patience!\",\"Thanks for bearing with me \u2014 just reviewing the details of the hold now. Won't be a moment!\"],\"resolveNote\":\"Give a specific release date wherever it's visible. 'Soon' or 'a few days' generates re-contacts \u2014 a date does not.\",\"resolve\":[\"I've looked into this for you. The hold is in place because [SIMPLE REASON \u2014 e.g. it's a new account, there's an open dispute].\\n\\nThe funds are due to be released on [DATE]. [ANY STEPS THAT COULD SPEED THIS UP \u2014 or remove this sentence if none apply].\\n\\nIs there anything else about this I can help clarify?\",\"I can see this hold is linked to [REASON]. I know that's not what you were hoping for, and I want to be upfront with you about what's happening.\\n\\n[SIMPLE EXPLANATION]. The funds will be available on [DATE], and you'll get an email from us if anything changes before then.\",\"Thank you for your patience while I checked on this. Unfortunately the hold can't be released early because [SIMPLE REASON]. I'm really sorry I don't have better news.\\n\\nThe funds will be available on [DATE]. [MENTION ANY ALTERNATIVE OPTIONS IF APPLICABLE \u2014 or remove this sentence]. Is there anything else I can help with today?\",\"You have what is called a release amount on your account. This means you can receive up to [AMOUNT] cumulatively within 30 days before any remaining amount above that goes on hold. The hold is a 21-day payment hold, meaning in the worst case the payment stays on hold for 21 days from the date you received the transaction.\\n\\nThe good news is there are early release options. The most common way is by shipping the item with tracking to the correct address and adding the tracking information to the PayPal transaction. Once it shows as delivered to the correct address for at least 24 hours, we can look at releasing the hold early.\\n\\nIf you are selling a service, you can mark the transaction as 'services rendered' once the service has been provided \u2014 this will allow the funds to be released within 7 days of marking it completed.\"]}]},{\"id\":\"account\",\"label\":\"Account Settings\",\"emoji\":\"ACC\",\"color\":\"#3B7D6E\",\"colorLight\":\"#E8F5F1\",\"desc\":\"Profile updates, bank/card details, login and security\",\"blocks\":[{\"clarifyNote\":\"Account Settings covers a lot of ground \u2014 narrow it down before you start researching to avoid going in the wrong direction.\",\"clarify\":[\"Happy to help with that! Could you let me know what you're trying to update or access?\\n\\nFor example \u2014 is it your bank or card details, your business information, login and security settings, or something else?\",\"Are you having trouble finding the setting, or are you running into an error when you try to make the change?\",\"Are you using the PayPal website or the mobile app? The steps can sometimes look a little different between the two.\"],\"hold\":[\"Thanks for that \u2014 just looking into this for you now. Back with you shortly!\",\"Appreciate your patience \u2014 just checking that on my end. Won't be long!\"],\"resolveNote\":\"Keep instructions short and numbered. Long paragraphs of steps are the main reason Account Settings contacts re-contact.\",\"resolve\":[\"To update your [SETTING], here's what to do:\\n\\n1. Log in to your PayPal account\\n2. Go to [WHERE TO GO]\\n3. Select [OPTION] and follow the steps\\n\\nLet me know if you hit any trouble along the way \u2014 happy to help!\",\"I've had a look and [WHAT YOU FOUND]. [ONE-SENTENCE REASON IF HELPFUL].\\n\\nI've gone ahead and [ACTION YOU TOOK]. You should be able to [EXPECTED RESULT] now. Could you give it a try and let me know if that's all good?\",\"For [WHAT THEY ASKED ABOUT], you can manage that in [WHERE]. You'll be able to [WHAT THEY CAN DO THERE].\\n\\nIf you're not seeing that option, it might be because [SIMPLE REASON \u2014 e.g. account type]. Would you like me to take a closer look?\"]}]},{\"id\":\"fraud\",\"label\":\"Fraud & Scams\",\"emoji\":\"FRD\",\"color\":\"#7B241C\",\"colorLight\":\"#FDEDEC\",\"desc\":\"Unauthorised transactions, account compromise, security\",\"blocks\":[{\"clarifyNote\":\"Empathy before everything \u2014 customers reporting fraud are often distressed or embarrassed. Acknowledge first, then gather information gently.\",\"clarify\":[\"I'm really sorry to hear this has happened \u2014 please don't worry, we're going to look into this together right now.\\n\\nTo help me raise this correctly, could you let me know: did you notice an unexpected payment sent from your account, or did something change on your account \u2014 like your email address or password?\",\"Do you still have access to your PayPal account, or have you been locked out?\",\"When did you first notice something was wrong? And have you already taken any steps, like changing your password or removing a card?\"],\"hold\":[\"Thank you for letting me know \u2014 I want to make sure we handle this carefully for you. I'm reviewing your account now and will be back with you very shortly. I really appreciate your patience!\",\"I completely understand this is urgent \u2014 I'm on it right now. Thank you so much for bearing with me!\"],\"resolveNote\":\"Be clear about exactly what has been done, what the customer needs to do, and what the timeline is. Vague outcomes are the top driver of re-contacts on fraud cases.\",\"resolve\":[\"I've reviewed your account and I can see [WHAT YOU FOUND]. I'm really sorry this has happened to you.\\n\\nI've [ACTION TAKEN]. [WHAT HAPPENS NEXT AND HOW LONG IT TAKES].\\n\\nYou'll receive a confirmation email from us shortly. In the meantime, I'd also suggest [SECURITY TIP \u2014 e.g. updating your password] if you haven't already.\",\"Thank you for your patience while I looked into this. [WHAT YOU FOUND \u2014 simply explained].\\n\\n[OUTCOME AND REASON \u2014 plain language]. [NEXT STEPS WITH TIMEFRAME].\\n\\nI know that may not be the answer you were hoping for, and I'm sorry. Please reach out anytime if anything else comes up.\",\"I've secured your account and [ACTIONS TAKEN].\\n\\nTo help keep your account safe going forward, here are a few simple steps:\\n\\n- Change your password to something you only use for PayPal\\n- Turn on two-step verification in your Security Settings\\n- Check your linked cards and bank accounts, and remove anything you don't recognise\\n\\nIs there anything else I can help you with today?\"]}]},{\"id\":\"refunds\",\"label\":\"Refunds & Payments\",\"emoji\":\"REF\",\"color\":\"#1A6B4A\",\"colorLight\":\"#EAF4EE\",\"desc\":\"Echeck processing, refund timelines, cancelled card refunds\",\"subs\":[{\"id\":\"refunds-echeck\",\"label\":\"Echeck & Refund Timelines\",\"clarifyNote\":\"Identify whether the refund was processed as an echeck or directly from bank/card \u2014 check the transaction before using these responses.\",\"clarify\":[\"I'm sorry to hear you're waiting on a refund \u2014 let's have a look at what's happening.\\n\\nCould you let me know the approximate date and amount of the transaction so I can locate it?\",\"Are you able to see the refund in your PayPal account activity, or has it not appeared yet?\"],\"hold\":[\"Thank you \u2014 just pulling up the transaction details now. Won't be a moment!\",\"Thanks for that \u2014 reviewing the refund status on my end now. Back with you shortly!\"],\"resolveNote\":\"Use the echeck responses when the transaction shows as echeck. Use the standard refund response for direct bank or card refunds. Always give a timeframe.\",\"resolve\":[\"The seller processed this refund as an echeck on [DATE]. Think of it like a physical check \u2014 it needs time to process and clear before the funds become available. This typically takes up to 7 business days on average, but can vary depending on weekends and holidays.\\n\\nIf the echeck clears, the refund will be sent to you. If the original payment was by bank or card, that can also take up to 7 business days on top \u2014 meaning the full process could take roughly 14 business days in total.\\n\\nOnce the echeck finishes processing, your PayPal account will show either 'Completed' or 'Denied'. If completed, the refund is on its way to your bank or card. If it shows failed, we can look into other options such as raising a dispute. I really appreciate your patience!\",\"Great news \u2014 the echeck has now cleared and the money is on its way to you. It has been processed back to your bank or card and should be visible within 7 business days on average, though this can vary depending on your bank or card's processing time. Thank you so much for your patience!\",\"The refund was sent to your bank or card on [DATE]. This typically takes up to 7 business days on average to appear, though it can vary based on your bank or card's processing time. I can confirm the refund has been processed on our end \u2014 I appreciate your patience!\",\"The transaction was sent as an echeck. Think of it like a physical check \u2014 it needs time to process and clear before funds become available, typically up to 7 business days on average. As soon as it clears, the funds will be sent to [DESTINATION]. I'm sorry for any inconvenience in the meantime!\"]},{\"id\":\"refunds-cancelled\",\"label\":\"Cancelled Card / Closed Account\",\"clarifyNote\":\"The funds are not lost \u2014 they are held by the bank. Direct the customer to their card issuer using the exact terms 'unallocated funds' or 'general ledger'.\",\"clarify\":[\"I'm sorry to hear the refund has gone to a closed or cancelled account. Could you confirm which card or account it was sent to, and approximately when this happened?\"],\"hold\":[\"Thank you \u2014 just reviewing the refund details on my end. Back with you shortly!\"],\"resolveNote\":\"Always clarify the funds are not lost before explaining next steps \u2014 this reduces customer distress immediately.\",\"resolve\":[\"This can be a little tricky, but the good news is the funds are not lost. When we process a refund to an account that has been closed or cancelled, the funds are generally held in what's called an 'unallocated funds' or 'general ledger' account by the card issuer or bank.\\n\\nYou'll need to contact your card issuer or bank as soon as possible. Use the terms 'unallocated funds' or 'general ledger' \u2014 this will help them understand what happened and connect you with the right specialist team, as this is typically a manual process rather than an automatic one.\\n\\nMake sure you have the specific date, time, and amount of the refund ready \u2014 this will help them match the funds to your account.\"]},{\"id\":\"refunds-fronted\",\"label\":\"PayPal Fronted Payment\",\"clarifyNote\":\"Use when a customer is confused about a charge appearing on their card, or why a same-day refund still shows as pending.\",\"clarify\":[\"I can see there's a question about how the payment was processed. Could you let me know what you're seeing on your card or bank statement?\"],\"hold\":[\"Thanks for that \u2014 just reviewing the payment details now. Back shortly!\"],\"resolveNote\":\"Keep the fronting explanation simple. For same-day refunds, reassure the customer that the charge will simply drop off.\",\"resolve\":[\"When you send a payment using your bank account or card, PayPal fronts the money to the seller straight away so they're paid upfront \u2014 while we wait for your bank to transfer the funds to PayPal, which can take 3 to 5 business days. This is why the charge may appear on your statement before the transfer has fully cleared.\",\"Since the payment and the refund happened on the same day, PayPal did not pursue collecting the funds from your card. What will happen is that the pending charge will simply fall off your card statement as if the transaction never took place, and your balance will adjust accordingly.\"]}]},{\"id\":\"security\",\"label\":\"Payment Review & Security\",\"emoji\":\"SEC\",\"color\":\"#7B241C\",\"colorLight\":\"#FDEDEC\",\"desc\":\"72-hour reviews, declined transactions, flagged payments\",\"subs\":[{\"id\":\"sec-review\",\"label\":\"Payment Under Review (72hr)\",\"clarifyNote\":\"Do not speculate on why the payment was flagged \u2014 this is by design. Reassure, give the timeframe, apologise for inconvenience.\",\"clarify\":[\"I'm sorry to hear your payment is being held up. Could you confirm the date and amount of the payment so I can take a look?\"],\"hold\":[\"Thank you \u2014 reviewing the payment details now. Won't keep you long!\"],\"resolveNote\":\"Do not explain the specific trigger for the review. Keep it reassuring and factual.\",\"resolve\":[\"As part of our security measures, we review certain payments more closely to make sure our platform is being used safely and to minimise risk for everyone involved. One of your payments is currently going through this process.\\n\\nWe're working to resolve this as quickly as possible \u2014 the review typically takes around 72 hours. I'm sorry for any inconvenience and I appreciate your patience!\",\"There's no need to worry about something being wrong with your account. To comply with global financial regulations, we review payments across PayPal from time to time \u2014 this doesn't happen on every payment, but it can happen and is part of our commitment to security and compliance.\"]},{\"id\":\"sec-decline\",\"label\":\"Declined / Flagged Transactions\",\"clarifyNote\":\"Do not disclose the specific reason for the decline \u2014 the system is proprietary by design. Empathise, explain at a high level, and offer practical alternatives.\",\"clarify\":[\"I'm sorry to hear your transaction didn't go through \u2014 I know that's frustrating. Could you confirm the date, amount, and what you were trying to pay for?\"],\"hold\":[\"Thank you \u2014 just reviewing this on my end now. Back with you shortly!\"],\"resolveNote\":\"Do not imply the decline was a mistake or promise a different outcome next time. Offer alternatives where possible.\",\"resolve\":[\"I completely understand how frustrating this is, and I'm sorry. PayPal's security system reviews transactions in real time to help protect everyone on the platform. Some payments are flagged without an obvious explanation \u2014 this is because the system is assessing risk factors that aren't always visible to us.\\n\\nYou may want to try again at a different time, or consider using an alternative payment method for this particular transaction.\",\"As fraudsters become more sophisticated, our security system has to keep pace. This sometimes means transactions are stopped that we can't fully explain. The system is deliberately proprietary \u2014 PayPal doesn't share the specific reasoning, and that's what makes it effective. I know that's not easy to hear, but it is there to protect you and your money.\",\"I understand it can feel frustrating, but the main reason people trust PayPal is our security. We work hard to protect everyone on the platform, and sometimes that means payments are held or declined.\\n\\nI know it's not ideal right now, but it is there to protect all parties in the transaction. Here are some options available to you: [INSERT OPTIONS].\"]}]}]}");
+const RS = {};
+let rsIdx = 0;
+function store(text) { const k='r'+(rsIdx++); RS[k]=text; return k; }
+function copyStored(key, btn) { copyText(RS[key]||'', btn); }
+function copyStoredParent(btn) { const el=btn.closest('[data-key]'); if(el) copyText(RS[el.dataset.key]||'',btn); }
+
+function copyText(text, btn) {
+  const orig = btn.textContent;
+  const succeed = function() {
+    btn.textContent = 'Copied!'; btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+  };
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+  if (ok) { succeed(); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(succeed).catch(function(){});
+  }
+}
+
+var state = { sectionId: null, subId: null, typeTab: 'clarify', searchQuery: '' };
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escNl(s) { return esc(s).replace(/\n/g,'<br>'); }
+
+function renderSidebar() {
+  var sb = document.getElementById('sidebar'); sb.innerHTML = '';
+  var home = document.createElement('div');
+  home.className = 'nav-item' + (!state.sectionId && !state.searchQuery ? ' active' : '');
+  home.innerHTML = '<span class="nav-dot"></span>All Topics';
+  home.onclick = function(){ navigate(null, null); };
+  sb.appendChild(home);
+  DATA.sections.forEach(function(sec) {
+    var item = document.createElement('div');
+    item.className = 'nav-item' + (state.sectionId === sec.id ? ' active' : '');
+    item.innerHTML = '<span style="font-size:11px;font-weight:700;color:'+sec.color+'">'+sec.emoji+'</span> '+esc(sec.label);
+    item.onclick = function(){ navigate(sec.id, null); };
+    sb.appendChild(item);
+    if (state.sectionId === sec.id && sec.subs) {
+      sec.subs.forEach(function(sub) {
+        var si = document.createElement('div');
+        si.className = 'nav-sub-item' + (state.subId === sub.id ? ' active' : '');
+        si.textContent = sub.label;
+        si.onclick = function(e){ e.stopPropagation(); navigate(sec.id, sub.id); };
+        sb.appendChild(si);
+      });
+    }
+  });
+}
+
+function navigate(sectionId, subId) {
+  for (var k in RS) delete RS[k]; rsIdx = 0;
+  state.sectionId = sectionId; state.subId = subId;
+  state.typeTab = 'clarify'; state.searchQuery = '';
+  document.getElementById('searchInput').value = '';
+  renderSidebar(); renderMain();
+}
+
+function renderMain() {
+  if (state.searchQuery) { renderSearch(); return; }
+  if (!state.sectionId) { renderHome(); return; }
+  var sec = DATA.sections.find(function(s){ return s.id === state.sectionId; });
+  if (!sec) return;
+  if (sec.isOpeners) { renderOpeners(sec); return; }
+  if (sec.isShortcuts) { renderShortcuts(sec); return; }
+  renderSection(sec);
+}
+
+function renderHome() {
+  var html = '<div class="home-header fade-in"><h1>Chat Response Tool</h1><p>Select a topic — or search above.</p></div><div class="home-grid fade-in">';
+  DATA.sections.forEach(function(sec) {
+    html += '<div class="topic-card" onclick="navigate(\''+sec.id+'\',null)">'
+      +'<div class="card-pip" style="background:'+sec.colorLight+';font-size:11px;font-weight:700;color:'+sec.color+'">'+esc(sec.emoji)+'</div>'
+      +'<div class="card-title">'+esc(sec.label)+'</div>'
+      +'<div class="card-sub">'+esc(sec.desc)+'</div></div>';
+  });
+  html += '</div>';
+  document.getElementById('main').innerHTML = html;
+}
+
+function renderSection(sec) {
+  var activeSub = sec.subs ? (state.subId ? sec.subs.find(function(s){ return s.id===state.subId; }) : sec.subs[0]) : null;
+  var block = activeSub || (sec.blocks ? sec.blocks[0] : null);
+  if (!block) return;
+  var html = '<div class="fade-in"><div class="section-header">'
+    +'<div class="section-pip" style="background:'+sec.colorLight+';font-size:11px;font-weight:700;color:'+sec.color+'">'+esc(sec.emoji)+'</div>'
+    +'<div><div class="section-title">'+esc(sec.label)+'</div>'
+    +'<div class="section-desc">'+esc(sec.desc)+'</div></div></div>';
+  if (sec.subs) {
+    html += '<div class="sub-tabs">';
+    sec.subs.forEach(function(sub) {
+      var a = (state.subId===sub.id)||(!state.subId&&sub===sec.subs[0]);
+      html += '<div class="sub-tab'+(a?' active':'')+'" onclick="navigate(\''+sec.id+'\',\''+sub.id+'\')">'+esc(sub.label)+'</div>';
+    });
+    html += '</div>';
+  }
+  if (block.criticalCheck) {
+    html += '<div class="critical-note"><div class="critical-note-header">IMPORTANT — Complete Before Responding</div><div class="critical-note-body">';
+    block.criticalCheck.forEach(function(line) {
+      html += '<div style="margin-bottom:6px">'+esc(line).replace(/(STEP \d+:|IMPORTANT:|DO NOT|IF YES —|IF NO —)/g,'<span class="step">$1</span>')+'</div>';
+    });
+    html += '</div></div>';
+  }
+  var tabs = [{id:'clarify',label:'Clarifying Questions'},{id:'hold',label:'Holding Messages'},{id:'resolve',label:'Resolution Messages'},{id:'inactivity',label:'Inactivity Nudges'}];
+  if (block.scenarios) tabs.push({id:'scenarios',label:'Scenarios'});
+  if (block.talkingPoints) tabs.push({id:'talkingpoints',label:'Talking Points'});
+  if (block.marketRefs) tabs.push({id:'marketrefs',label:'Market UA Refs'});
+  html += '<div class="type-tabs">';
+  tabs.forEach(function(t) { html += '<div class="type-tab'+(state.typeTab===t.id?' active':'')+'" onclick="setTypeTab(\''+t.id+'\')">'+t.label+'</div>'; });
+  html += '</div>'+renderTypeContent(block)+'</div>';
+  document.getElementById('main').innerHTML = html;
+}
+
+function setTypeTab(tab) {
+  state.typeTab = tab;
+  var sec = DATA.sections.find(function(s){ return s.id===state.sectionId; });
+  if (sec) renderSection(sec);
+}
+
+function renderTypeContent(block) {
+  var html = '', tab = state.typeTab;
+  if (tab==='clarify') {
+    if (block.clarifyNote) html += '<div class="agent-note"><strong>AGENT NOTE</strong> '+esc(block.clarifyNote)+'</div>';
+    html += '<div class="responses-grid">';
+    (block.clarify||[]).forEach(function(r,i){ html += responseItem(r,i+1); });
+    html += '</div>';
+  }
+  if (tab==='hold') {
+    if (block.holdNote) html += '<div class="agent-note"><strong>AGENT NOTE</strong> '+esc(block.holdNote)+'</div>';
+    html += '<div class="responses-grid">';
+    (block.hold||[]).forEach(function(r,i){ html += responseItem(r,i+1); });
+    html += '</div>';
+  }
+  if (tab==='resolve') {
+    if (block.resolveNote) html += '<div class="agent-note"><strong>AGENT NOTE</strong> '+esc(block.resolveNote)+'</div>';
+    html += '<div class="responses-grid">';
+    (block.resolve||[]).forEach(function(r,i){ html += responseItem(r,i+1); });
+    html += '</div>';
+  }
+  if (tab==='inactivity') {
+    var nudges = ["I noticed I haven't heard back from you yet. After two minutes of inactivity the chat will automatically close.","Just checking in — I noticed things have gone quiet on your end. After two minutes of inactivity the chat will automatically close. If you still need help, please reply and I'll be happy to continue!","Hi there, just a gentle reminder that I'm still here if you need me. After two minutes of inactivity the chat will automatically close — please respond if you'd like to continue."];
+    html += '<div class="agent-note"><strong>AGENT NOTE</strong> Send when the chat bubble turns yellow with ZZZs. Wait 2 minutes after sending, then close the chat if no reply.</div>';
+    html += '<div class="responses-grid">';
+    nudges.forEach(function(r,i){ html += responseItem(r,i+1); });
+    html += '</div>';
+  }
+  if (tab==='scenarios' && block.scenarios) {
+    html += '<div class="scenario-section">';
+    block.scenarios.forEach(function(s) {
+      html += '<div class="scenario-label">'+esc(s.label)+'</div>';
+      s.responses.forEach(function(r) {
+        var k=store(r);
+        html += '<div class="scenario-bubble" data-key="'+k+'">'+escNl(r)+'<button class="scenario-copy" onclick="event.stopPropagation();copyStoredParent(this)">Copy</button></div>';
+      });
+    });
+    html += '</div>';
+  }
+  if (tab==='talkingpoints' && block.talkingPoints) {
+    var tp = block.talkingPoints;
+    html += '<div class="tp-box"><div class="tp-header">Approved Company Talking Points</div><div class="tp-intro">'+esc(tp.intro)+'</div>';
+    tp.items.forEach(function(item) { html += '<div class="tp-item"><div class="tp-q">Q: '+esc(item.q)+'</div><div class="tp-a">'+esc(item.a)+'</div></div>'; });
+    html += '</div>';
+  }
+  if (tab==='marketrefs' && block.marketRefs) {
+    html += '<div class="market-box"><div class="market-box-header">User Agreement References by Market</div>';
+    block.marketRefs.forEach(function(m) {
+      html += '<div class="market-entry"><div class="market-name">'+esc(m.market)+'</div><div class="market-url">'+esc(m.url)+'</div><div class="market-quote">"'+esc(m.excerpt)+'"</div></div>';
+    });
+    html += '</div>';
+  }
+  return html;
+}
+
+function responseItem(text, num) {
+  var k=store(text), preview=text.length>120?text.substring(0,120)+'...':text;
+  return '<div class="response-item" onclick="toggleResponse(this)" data-key="'+k+'">'
+    +'<div class="response-preview"><div class="response-num">'+num+'</div>'
+    +'<div class="response-text">'+esc(preview.replace(/\n/g,' '))+'</div></div>'
+    +'<div class="response-actions">'
+    +'<button class="btn-copy" onclick="event.stopPropagation();copyStoredParent(this)">Copy to clipboard</button>'
+    +'<button class="btn-collapse" onclick="event.stopPropagation();this.closest(\'.response-item\').classList.remove(\'expanded\')">Collapse</button>'
+    +'</div>'
+    +'<div style="display:none" class="response-full">'+escNl(text)+'</div></div>';
+}
+
+function toggleResponse(el) {
+  var wasExp = el.classList.contains('expanded');
+  document.querySelectorAll('.response-item.expanded').forEach(function(e){ e.classList.remove('expanded'); });
+  if (!wasExp) {
+    el.classList.add('expanded');
+    var preview = el.querySelector('.response-text'), full = el.querySelector('.response-full');
+    if (full) preview.innerHTML = full.innerHTML;
+  }
+}
+
+function renderOpeners(sec) {
+  var html = '<div class="fade-in"><div class="section-header">'
+    +'<div class="section-pip" style="background:'+sec.colorLight+';font-size:11px;font-weight:700;color:'+sec.color+'">'+esc(sec.emoji)+'</div>'
+    +'<div><div class="section-title">'+esc(sec.label)+'</div>'
+    +'<div class="section-desc">Fill in <strong>[Name]</strong> and <strong>[SUMMARY]</strong> before sending.</div></div></div>';
+  sec.openers.forEach(function(opener) {
+    var k=store(opener.text);
+    html += '<div class="opener-card" onclick="this.classList.toggle(\'expanded\')">'
+      +'<div class="opener-header"><div><div class="opener-label">'+esc(opener.label)+'</div>'
+      +'<div class="opener-desc">'+esc(opener.desc)+'</div></div>'
+      +'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>'
+      +'<div class="opener-body"><div class="opener-text">'+escNl(opener.text)+'</div>'
+      +'<button class="btn-copy" data-key="'+k+'" onclick="event.stopPropagation();copyStored(this.dataset.key,this)">Copy to clipboard</button>'
+      +'</div></div>';
+  });
+  html += '</div>';
+  document.getElementById('main').innerHTML = html;
+}
+
+function renderShortcuts(sec) {
+  var catColors={"Opening / Greeting":"#E8F8F3","Empathy":"#EEF0FD","Info Gathering / Next Steps":"#FFF8E8","Waiting / Response Mgmt":"#F0F4FF","Transfer":"#FFF0E8","Resolution / Closing":"#E8F8F3","Cooperation / Limitation Closing":"#F5F0FF","Payment Review / Security":"#FFF3F0","General / Miscellaneous":"#F5F5F3","Compliance & Legal":"#EAF0F8"};
+  var catTxt={"Opening / Greeting":"#0A6B4A","Empathy":"#3D3DA0","Info Gathering / Next Steps":"#8A5C00","Waiting / Response Mgmt":"#2355A0","Transfer":"#A03020","Resolution / Closing":"#0A6B4A","Cooperation / Limitation Closing":"#5B3EA0","Payment Review / Security":"#8B2500","General / Miscellaneous":"#555555","Compliance & Legal":"#1A3A5C"};
+  var lastCat=null, rows='';
+  sec.shortcuts.forEach(function(row) {
+    var isNew=row.cat!==lastCat; lastCat=row.cat;
+    var fill=catColors[row.cat]||'#F5F5F3', tc=catTxt[row.cat]||'#333';
+    var k=store(row.msg), prev=row.msg.length>100?row.msg.substring(0,100)+'...':row.msg;
+    rows += '<tr><td style="background:'+(isNew?fill:'white')+';font-size:12px;font-weight:'+(isNew?600:400)+';color:'+(isNew?tc:'#aaa')+'">'+esc(isNew?row.cat:'')+'</td>'
+      +'<td><span class="qr-sc">'+esc(row.sc)+'</span></td>'
+      +'<td style="font-size:12px;color:#333">'+esc(prev)+'</td>'
+      +'<td><button class="qr-copy" data-key="'+k+'" onclick="copyStored(this.dataset.key,this)">Copy</button></td></tr>';
+  });
+  var html = '<div class="fade-in"><div class="section-header">'
+    +'<div class="section-pip" style="background:'+sec.colorLight+';font-size:11px;font-weight:700;color:'+sec.color+'">'+esc(sec.emoji)+'</div>'
+    +'<div><div class="section-title">'+esc(sec.label)+'</div><div class="section-desc">Type shortcut in chat to trigger. Case-sensitive.</div></div></div>'
+    +'<div style="overflow-x:auto"><table class="qr-table"><thead><tr><th style="width:180px">Category</th><th style="width:90px">Shortcut</th><th>Message</th><th style="width:70px"></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  document.getElementById('main').innerHTML = html;
+}
+
+function renderSearch() {
+  var q=state.searchQuery.toLowerCase(), results=[];
+  DATA.sections.forEach(function(sec) {
+    if (sec.isOpeners) { sec.openers.forEach(function(o){ if((o.text+o.label+o.desc).toLowerCase().indexOf(q)>=0) results.push({topic:sec.label,type:o.label,text:o.text}); }); return; }
+    if (sec.isShortcuts) { sec.shortcuts.forEach(function(s){ if((s.msg+s.sc+s.cat).toLowerCase().indexOf(q)>=0) results.push({topic:sec.label,type:s.sc+' — '+s.cat,text:s.msg}); }); return; }
+    function sb(block, topicLabel) {
+      ['clarify','hold','resolve'].forEach(function(t){ (block[t]||[]).forEach(function(r){ if(r.toLowerCase().indexOf(q)>=0) results.push({topic:topicLabel,type:t,text:r}); }); });
+      if(block.scenarios) block.scenarios.forEach(function(s){ s.responses.forEach(function(r){ if(r.toLowerCase().indexOf(q)>=0) results.push({topic:topicLabel,type:s.label,text:r}); }); });
+    }
+    if (sec.subs) sec.subs.forEach(function(sub){ sb(sub,sec.label+' > '+sub.label); });
+    else if (sec.blocks) sec.blocks.forEach(function(b){ sb(b,sec.label); });
+  });
+  if (!results.length) { document.getElementById('main').innerHTML = '<div class="sr-empty">No results for "'+esc(state.searchQuery)+'".</div>'; return; }
+  var html='<div class="fade-in"><div style="margin-bottom:20px;font-size:14px;color:var(--text-muted)">'+results.length+' result'+(results.length===1?'':'s')+' for "<strong>'+esc(state.searchQuery)+'</strong>"</div><div class="search-results">';
+  results.slice(0,30).forEach(function(r){
+    var k=store(r.text);
+    html+='<div class="search-result-item"><div class="sr-topic">'+esc(r.topic)+'</div><div class="sr-type">'+esc(r.type)+'</div><div class="sr-text">'+esc(r.text.replace(/\n/g,' '))+'</div><div style="margin-top:10px"><button class="btn-copy" style="font-size:12px;padding:6px 12px" data-key="'+k+'" onclick="copyStored(this.dataset.key,this)">Copy</button></div></div>';
+  });
+  html+='</div></div>';
+  document.getElementById('main').innerHTML = html;
+}
+
+var searchTimeout;
+document.getElementById('searchInput').addEventListener('input', function() {
+  clearTimeout(searchTimeout);
+  var val=this.value;
+  searchTimeout=setTimeout(function(){ state.searchQuery=val.trim(); if(state.searchQuery){renderSidebar();renderSearch();}else{renderMain();} },200);
+});
+
+renderSidebar();
+renderHome();
+
+function checkPassword() {
+  var input = document.getElementById('passwordInput');
+  var error = document.getElementById('passwordError');
+  if (input.value === 'fleege') {
+    document.getElementById('passwordGate').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    sessionStorage.setItem('auth', '1');
+  } else {
+    error.style.display = 'block';
+    input.value = '';
+    input.focus();
+  }
+}
+// Auto-unlock if already authenticated this session
+if (sessionStorage.getItem('auth') === '1') {
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('passwordGate').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+  });
+}
+
+</script>
+</body>
+</html>
